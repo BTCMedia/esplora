@@ -7,7 +7,10 @@ export default ({ t, blocks: recentBlocks, nextMoreBlocks, loading }) => recentB
   <div>
     <div className="jumbotron jumbotron-fluid">
       <div className="explorer-title-container">
-        <img className="explorer-title-container_logo" alt="" src="img/icons/menu-logo.svg" />
+
+          <img className="explorer-title-container_logo" alt="" src="img/icons/bitcoin-magazines.svg" />
+
+        <br />
         <h1 className="explorer-title-container_title">{t(process.env.HOME_TITLE || process.env.SITE_TITLE || 'Block Explorer')}</h1>
       </div>
       { search({ t, autofocus: true }) }

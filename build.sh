@@ -39,3 +39,6 @@ cat www/style.css | node -p "require('cssjanus').transform(fs.readFileSync('/dev
 
 # Pre-render notfound.html
 babel-node render-view.js '{"view":"error","error":"Page Not Found"}' > $DEST/notfound.html
+
+# add Netlify redirects
+echo "/*    /index.html   200" > $DEST/_redirects

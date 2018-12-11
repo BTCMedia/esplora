@@ -9,9 +9,13 @@ head
   base(href=process.env.BASE_HREF || '/')
 
   meta(name='viewport', content='width=device-width, initial-scale=1')
-  link(rel='shortcut icon', type='image/png', href='img/favicon_new.png')
+  link(rel='shortcut icon', type='image/png', href='img/favicon.png')
   link(rel='stylesheet', href='bootstrap.min.css')
   link(rel='stylesheet', href='style.css')
+
+  if process.env.BASE_URL
+    //- open search requires the absolute URL of the explorer
+    link(rel='search', href='opensearch.xml', type='application/opensearchdescription+xml', title=process.env.SITE_TITLE || 'Block Explorer')
 
   != process.env.HEAD_HTML
 

@@ -38,7 +38,7 @@ To start a development server with live babel/browserify transpilation, run:
 ```bash
 $ git clone https://github.com/Blockstream/esplora && cd esplora
 $ npm install
-$ export API_URL=http://localhost:5000/ # or https://blockstream.info/api/ if you don't have a local API server
+$ export API_URL=http://localhost:5000/ # or  if you don't have a local API server
 # (see more config options below)
 $ npm start
 ```

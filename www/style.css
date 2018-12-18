@@ -56,7 +56,7 @@ a, a:link, a:visited, a:hover, a:focus {
 }
 .navbar-brand::before {
   width: 264px;
-  height: 64px;
+  height: 55px;
   background: url(img/icons/bitcoin-magazine.svg);
   background-size: 226px 54px;
   display: inline-block;
@@ -555,7 +555,7 @@ body > .container, .navbar > .container, .jumbotron-fluid > .container, .content
 }
 
 .highlighted-text {
-  color: #00ccff !important;
+  color: #f7931b !important;
 }
 
 .newer-older-blocks-btns {
@@ -1170,7 +1170,7 @@ img.footer_container_content_onion-links_icon {
   font-weight: 400;
   width: 140px !important;
   height: 40px;
-  border: 1px solid #00ccff;
+  border: 1px solid #f7931b;
   border-radius: 5px;
   background-color: #22242c;
   display: table;
@@ -1256,7 +1256,7 @@ body::after{
   height: 50px;
   width: auto;
   margin: 0 auto;
-  border-bottom: solid 3px rgba(0, 195, 255, 1);
+  border-bottom: solid 3px #f7931b;
   height: 42px;
 }
 
@@ -1324,10 +1324,14 @@ body::after{
   margin-right: auto;
 }
 
+
+
 .nav-link {
   color: #fff;
   font-weight: 600;
 }
+
+
 
 .nav-link:hover {
   color: rgba(0, 195, 255, 1) !important;

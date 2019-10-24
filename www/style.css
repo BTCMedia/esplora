@@ -55,17 +55,10 @@ a, a:link, a:visited, a:hover, a:focus {
   font-size: 0px;
 }
 .navbar-brand::before {
-<<<<<<< HEAD
   width: 264px;
   height: 55px;
   background: url(img/icons/bitcoin-magazine.svg);
   background-size: 226px 54px;
-=======
-  width: 54px;
-  height: 54px;
-  background: url(img/icons/menu-logo.png);
-  background-size: 54px 54px;
->>>>>>> upstream/master
   display: inline-block;
   vertical-align: top;
   content: ' ';
@@ -1304,10 +1297,7 @@ body::after{
   height: 50px;
   width: auto;
   margin: 0 auto;
-<<<<<<< HEAD
   border-bottom: solid 3px #f7931b;
-=======
->>>>>>> upstream/master
   height: 42px;
 }
 
@@ -1804,7 +1794,7 @@ body::after{
   .title-bar-recent h1 {
     font-size: 18px;
   }
-  
+
   .title-bar-recent h1 a {
     margin-right: 20px;
   }

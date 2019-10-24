@@ -1,28 +1,28 @@
 FROM blockstream/esplora-base:latest AS build
 
-FROM debian:stretch@sha256:df6ebd5e9c87d0d7381360209f3a05c62981b5c2a3ec94228da4082ba07c4f05
+FROM debian:buster@sha256:2f04d3d33b6027bb74ecc81397abe780649ec89f1a2af18d7022737d0482cefe
 
 COPY --from=build /srv/explorer /srv/explorer
 COPY --from=build /root/.nvm /root/.nvm
 
-RUN sed -i 's/deb.debian.org/httpredir.debian.org/g' /etc/apt/sources.list \
- && apt-get -yqq update \
+RUN apt-get -yqq update \
  && apt-get -yqq upgrade \
- && apt-get -yqq install nginx supervisor tor git curl
+ && apt-get -yqq install nginx libnginx-mod-http-lua tor git curl runit procps socat gpg
 
 RUN mkdir -p /srv/explorer/static
 
-COPY ./ /tmp/explorer
+COPY ./ /srv/explorer/source
 
 ARG FOOT_HTML
 
-WORKDIR /tmp/explorer
+WORKDIR /srv/explorer/source
 
 SHELL ["/bin/bash", "-c"]
 
 # required to run some scripts as root (needed for docker)
 RUN source /root/.nvm/nvm.sh \
  && npm config set unsafe-perm true \
+ && npm install && (cd prerender-server && npm run dist) \
  && DEST=/srv/explorer/static/bitcoin-mainnet \
     npm run dist -- bitcoin-mainnet \
  && DEST=/srv/explorer/static/bitcoin-testnet \
@@ -37,12 +37,12 @@ RUN source /root/.nvm/nvm.sh \
     npm run dist -- liquid-mainnet blockstream
 
 # configuration
-RUN cp /tmp/explorer/contrib/*.conf.in /tmp/explorer/contrib/*torrc /tmp/explorer/run.sh /tmp/explorer/cli.sh.in /srv/explorer/
+RUN cp /srv/explorer/source/run.sh /srv/explorer/
 
 # cleanup
-RUN apt-get --auto-remove remove -yqq --purge manpages git curl \
+RUN apt-get --auto-remove remove -yqq --purge manpages \
  && apt-get clean \
  && apt-get autoclean \
- && rm -rf /usr/share/doc* /usr/share/man /usr/share/postgresql/*/man /var/lib/apt/lists/* /var/cache/* /tmp/* /root/.cache /*.deb /root/.nvm /root/.cargo
+ && rm -rf /usr/share/doc* /usr/share/man /usr/share/postgresql/*/man /var/lib/apt/lists/* /var/cache/* /tmp/* /root/.cache /*.deb /root/.cargo
 
 WORKDIR /srv/explorer

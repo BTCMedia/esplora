@@ -5,11 +5,11 @@ mounts:
   - [ /dev/disk/by-label/data, /mnt/disks/data, auto, defaults ]
 
 users:
-  - name: exec
+  - name: bs
     uid: 2000
 
 write_files:
-  - path: /home/exec/prometheus/alertmanager.yml
+  - path: /home/bs/prometheus/alertmanager.yml
     permissions: 0644
     owner: root
     content: |
@@ -30,7 +30,7 @@ write_files:
               teams: SecOps   # Put in your team here
               tags: esplora
 
-  - path: /home/exec/prometheus/rules/alerts.yml
+  - path: /home/bs/prometheus/rules/alerts.yml
     permissions: 0644
     owner: root
     content: |
@@ -70,7 +70,7 @@ write_files:
                 summary: No hosts in network {{ $labels.name }}, production traffic impacted!
                 description: There are currently no hosts up in the network {{ $labels.name }}, verify the instance group. https://wiki.blockstream.io/OpsPlaybooks/Esplora-Runbooks#NoHostsInNetworkLiquidMainnet
 
-  - path: /home/exec/prometheus/prometheus.yml
+  - path: /home/bs/prometheus/prometheus.yml
     permissions: 0644
     owner: root
     content: |
@@ -154,6 +154,70 @@ write_files:
             - project: green-address-explorer
               zone: us-east1-c
               filter: (labels.type = "prometheus")
+              port: 9100
+        - job_name: tor
+          relabel_configs:
+            - source_labels:
+              - '__meta_gce_label_network'
+              target_label: 'network'
+            - source_labels:
+              - '__meta_gce_label_name'
+              target_label: 'name'
+            - source_labels:
+              - '__meta_gce_instance_name'
+              target_label: 'instance_name'
+          gce_sd_configs:
+            - project: green-address-explorer
+              zone: asia-northeast1-a
+              filter: (labels.type = "tor")
+              port: 9100
+            - project: green-address-explorer
+              zone: asia-northeast1-b
+              filter: (labels.type = "tor")
+              port: 9100
+            - project: green-address-explorer
+              zone: asia-northeast1-c
+              filter: (labels.type = "tor")
+              port: 9100
+            - project: green-address-explorer
+              zone: europe-west4-a
+              filter: (labels.type = "tor")
+              port: 9100
+            - project: green-address-explorer
+              zone: europe-west4-b
+              filter: (labels.type = "tor")
+              port: 9100
+            - project: green-address-explorer
+              zone: europe-west4-c
+              filter: (labels.type = "tor")
+              port: 9100
+            - project: green-address-explorer
+              zone: us-central1-a
+              filter: (labels.type = "tor")
+              port: 9100
+            - project: green-address-explorer
+              zone: us-central1-b
+              filter: (labels.type = "tor")
+              port: 9100
+            - project: green-address-explorer
+              zone: us-central1-c
+              filter: (labels.type = "tor")
+              port: 9100
+            - project: green-address-explorer
+              zone: us-central1-f
+              filter: (labels.type = "tor")
+              port: 9100
+            - project: green-address-explorer
+              zone: us-east1-d
+              filter: (labels.type = "tor")
+              port: 9100
+            - project: green-address-explorer
+              zone: us-east1-b
+              filter: (labels.type = "tor")
+              port: 9100
+            - project: green-address-explorer
+              zone: us-east1-c
+              filter: (labels.type = "tor")
               port: 9100
         - job_name: http-tor
           relabel_configs:
@@ -348,16 +412,17 @@ write_files:
         [Service]
         Restart=always
         RestartSec=1
-        Environment=HOME=/home/exec
+        Environment=HOME=/home/bs
         ExecStartPre=/usr/bin/docker-credential-gcr configure-docker
         ExecStartPre=/usr/bin/docker pull ${docker_tag}
         ExecStartPre=/sbin/iptables -A INPUT -m tcp -p tcp --dport 9090 -j ACCEPT
         ExecStartPre=/sbin/iptables -A INPUT -m tcp -p tcp --dport 80 -j ACCEPT
         ExecStartPre=/sbin/iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port 9090
         ExecStart=/usr/bin/docker run \
+            --log-driver=gcplogs \
             --network=host \
             -v /mnt/disks/data:/data:rw \
-            -v /home/exec/prometheus:/config:ro \
+            -v /home/bs/prometheus:/config:ro \
             --read-only \
             --name prometheus \
             "${docker_tag}" --config.file=/config/prometheus.yml --web.enable-lifecycle --web.enable-admin-api --storage.tsdb.path=/data/metrics --storage.tsdb.retention=${retention}
@@ -381,14 +446,15 @@ write_files:
         [Service]
         Restart=always
         RestartSec=1
-        Environment=HOME=/home/exec
+        Environment=HOME=/home/bs
         ExecStartPre=/usr/bin/docker-credential-gcr configure-docker
         ExecStartPre=/usr/bin/docker pull ${docker_tag}
         ExecStartPre=/sbin/iptables -A INPUT -m tcp -p tcp --dport 9093 -j ACCEPT
         ExecStart=/usr/bin/docker run \
+            --log-driver=gcplogs \
             --network=host \
             -v /mnt/disks/data:/data:rw \
-            -v /home/exec/prometheus:/config:ro \
+            -v /home/bs/prometheus:/config:ro \
             --read-only \
             --name alertmanager \
             --entrypoint=/bin/alertmanager \
@@ -411,11 +477,12 @@ write_files:
         [Service]
         Restart=always
         RestartSec=1
-        Environment=HOME=/home/exec
+        Environment=HOME=/home/bs
         ExecStartPre=/usr/bin/docker-credential-gcr configure-docker
         ExecStartPre=/usr/bin/docker pull ${docker_tag_node_exporter}
         ExecStartPre=/sbin/iptables -A INPUT -m tcp -p tcp --dport 9100 -j ACCEPT
         ExecStart=/usr/bin/docker run \
+            --log-driver=gcplogs \
             --name=node-exporter \
             --network=host \
             --read-only \
@@ -423,7 +490,8 @@ write_files:
             -v /sys:/host/sys:ro \
             -v /:/rootfs:ro \
             -v metrics:/metrics:ro \
-            "${docker_tag_node_exporter}" --path.procfs /host/proc --path.sysfs /host/sys --collector.textfile.directory /metrics --collector.filesystem.ignored-mount-points "^/(sys|proc|dev|host|etc($|/))"
+            -v /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro \
+            "${docker_tag_node_exporter}" --path.procfs /host/proc --path.sysfs /host/sys --collector.textfile.directory /metrics --collector.filesystem.ignored-mount-points "^/(sys|proc|dev|host|etc($|/))" --collector.systemd
         ExecStop=/usr/bin/docker stop node-exporter
         ExecStopPost=/usr/bin/docker rm node-exporter
         ExecStopPost=/sbin/iptables -D INPUT -m tcp -p tcp --dport 9100 -j ACCEPT

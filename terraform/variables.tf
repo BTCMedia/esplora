@@ -5,7 +5,6 @@ locals {
       create_bitcoin_mainnet = 0
       create_bitcoin_testnet = 0
       create_liquid_mainnet  = 0
-      create_builders        = 0
     }
 
     "bitcoin-mainnet" = {
@@ -13,7 +12,6 @@ locals {
       create_bitcoin_mainnet = 1
       create_bitcoin_testnet = 0
       create_liquid_mainnet  = 0
-      create_builders        = 0
     }
 
     "bitcoin-testnet" = {
@@ -21,7 +19,6 @@ locals {
       create_bitcoin_mainnet = 0
       create_bitcoin_testnet = 1
       create_liquid_mainnet  = 0
-      create_builders        = 0
     }
 
     "liquid-mainnet" = {
@@ -29,77 +26,74 @@ locals {
       create_bitcoin_mainnet = 0
       create_bitcoin_testnet = 0
       create_liquid_mainnet  = 1
-      create_builders        = 0
-    }
-
-    "builders" = {
-      create_main            = 0
-      create_bitcoin_mainnet = 0
-      create_bitcoin_testnet = 0
-      create_liquid_mainnet  = 0
-      create_builders        = 1
     }
   }
 
-  create_main            = "${lookup(local.context_variables[terraform.workspace], "create_main")}"
-  create_bitcoin_mainnet = "${lookup(local.context_variables[terraform.workspace], "create_bitcoin_mainnet")}"
-  create_bitcoin_testnet = "${lookup(local.context_variables[terraform.workspace], "create_bitcoin_testnet")}"
-  create_liquid_mainnet  = "${lookup(local.context_variables[terraform.workspace], "create_liquid_mainnet")}"
-  create_builders        = "${lookup(local.context_variables[terraform.workspace], "create_builders")}"
+  create_main            = lookup(local.context_variables[terraform.workspace], "create_main")
+  create_bitcoin_mainnet = lookup(local.context_variables[terraform.workspace], "create_bitcoin_mainnet")
+  create_bitcoin_testnet = lookup(local.context_variables[terraform.workspace], "create_bitcoin_testnet")
+  create_liquid_mainnet  = lookup(local.context_variables[terraform.workspace], "create_liquid_mainnet")
 }
 
 variable "project" {
-  type    = "string"
+  type    = string
   default = "green-address-explorer"
 }
 
 variable "region" {
-  type    = "string"
+  type    = string
   default = "overwritten_by_ci"
 }
 
 variable "machine_type" {
-  type    = "string"
+  type    = string
   default = "overwritten_by_ci"
 }
 
 variable "cluster_size" {
-  type    = "string"
+  type    = string
   default = "overwritten_by_ci"
 }
 
 # lists overwritten by ci
 variable "regions" {
-  type    = "list"
+  type    = list
   default = [""]
 }
 
 variable "ssl_certs" {
-  type    = "list"
+  type    = list
   default = []
 }
 
 variable "zones" {
-  type    = "list"
+  type    = list
   default = [""]
 }
 
 variable "instance_type" {
-  type    = "list"
+  type    = list
+  default = ["", "", "", ""]
+}
+
+variable "preemptible_instance_type" {
+  type    = list
   default = ["", "", "", ""]
 }
 
 variable "hosts" {
+  type    = list
   default = [""]
 }
 
 variable "hosts_onion" {
+  type    = list
   default = ["", ""]
 }
 
 # some hardcoded vars and misc
 variable "docker_tag_nginx" {
-  type = "string"
+  type = string
 
   # docker inspect --format='{{index .RepoDigests 0}}' nginx:alpine
 
@@ -107,7 +101,7 @@ variable "docker_tag_nginx" {
 }
 
 variable "docker_tag_node_exporter" {
-  type = "string"
+  type = string
 
   # docker inspect --format='{{index .RepoDigests 0}}' prom/node-exporter:v0.16.0
 
@@ -115,28 +109,28 @@ variable "docker_tag_node_exporter" {
 }
 
 variable "docker_tag_explorer" {
-  type    = "string"
+  type    = string
   default = "overwritten_by_ci"
 }
 
 variable "docker_tag_tor" {
-  type    = "string"
-  default = "blockstream/gcloud-tor@sha256:be56a33b3010ac4c85037899714979bb4eb6c15fe85114bd009501750320617f"
+  type    = string
+  default = "blockstream/tor@sha256:f4d1373cde79fd79b467d2d6da88e37b0da137924bc10ae2d51a83c686c2c125"
 }
 
 variable "docker_tag_prometheus" {
-  type    = "string"
+  type    = string
   default = "gcr.io/green-address-explorer/prometheus@sha256:f3817443defecd22e51017769a8835dca21ea87f7d1edf6d78e007c90e813843"
 }
 
 variable "min_ready_sec" {
-  type        = "string"
+  type        = string
   description = "How long should autoscaling wait before executing another action?"
   default     = "900"
 }
 
 variable "initial_delay_sec" {
-  type        = "string"
+  type        = string
   description = "How long should the instance group healthcheck wait before checking instances?"
   default     = "1800"
 }
@@ -152,4 +146,19 @@ variable "opsgenie_api_key" {
 
 variable "kms_location" {
   default = "us-central1"
+}
+
+variable "image_source_project" {
+  type    = string
+  default = ""
+}
+
+variable "mempooldat" {
+  type    = string
+  default = ""
+}
+
+variable "fullurl" {
+  type    = string
+  default = ""
 }

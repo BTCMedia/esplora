@@ -1,9 +1,9 @@
 users:
-  - name: exec
+  - name: bs
     uid: 2000
 
 write_files:
-  - path: /home/exec/nginx.conf
+  - path: /home/bs/nginx.conf
     permissions: 0644
     owner: root
     content: |
@@ -63,16 +63,17 @@ write_files:
         [Service]
         Restart=always
         RestartSec=1
-        Environment=HOME=/home/exec
+        Environment=HOME=/home/bs
         ExecStartPre=/usr/bin/docker-credential-gcr configure-docker
         ExecStartPre=/usr/bin/docker pull ${docker_tag_nginx}
         ExecStartPre=/sbin/iptables -A INPUT -m tcp -p tcp --dport 80 -j ACCEPT
         ExecStart=/usr/bin/docker run \
+            --log-driver=gcplogs \
             --network=host \
             --pid=host \
             --name=nginx \
             --tmpfs /tmp/ \
-            -v /home/exec/nginx.conf:/etc/nginx/nginx.conf:ro \
+            -v /home/bs/nginx.conf:/etc/nginx/nginx.conf:ro \
             "${docker_tag_nginx}"
         ExecStop=/usr/bin/docker stop nginx
         ExecStopPost=/usr/bin/docker rm nginx
@@ -92,11 +93,12 @@ write_files:
         [Service]
         Restart=always
         RestartSec=1
-        Environment=HOME=/home/exec
+        Environment=HOME=/home/bs
         ExecStartPre=/usr/bin/docker-credential-gcr configure-docker
         ExecStartPre=/usr/bin/docker pull ${docker_tag_node_exporter}
         ExecStartPre=/sbin/iptables -A INPUT -m tcp -p tcp --dport 9100 -j ACCEPT
         ExecStart=/usr/bin/docker run \
+            --log-driver=gcplogs \
             --name=node-exporter \
             --network=host \
             --read-only \
@@ -104,7 +106,8 @@ write_files:
             -v /sys:/host/sys:ro \
             -v /:/rootfs:ro \
             -v metrics:/metrics:ro \
-            "${docker_tag_node_exporter}" --path.procfs /host/proc --path.sysfs /host/sys --collector.textfile.directory /metrics --collector.filesystem.ignored-mount-points "^/(sys|proc|dev|host|etc($|/))"
+            -v /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro \
+            "${docker_tag_node_exporter}" --path.procfs /host/proc --path.sysfs /host/sys --collector.textfile.directory /metrics --collector.filesystem.ignored-mount-points "^/(sys|proc|dev|host|etc($|/))" --collector.systemd
         ExecStop=/usr/bin/docker stop node-exporter
         ExecStopPost=/usr/bin/docker rm node-exporter
         ExecStopPost=/sbin/iptables -D INPUT -m tcp -p tcp --dport 9100 -j ACCEPT

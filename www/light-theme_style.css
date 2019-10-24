@@ -7,6 +7,10 @@ body.theme-light {
     color: rgba(21, 24, 28, 1) !important;
 }
 
+.theme-light .transactions-table-row {
+    color: rgba(21, 24, 28, 1) !important;
+}
+
 .theme-light .jumbotron-fluid {
     background-color: rgba(238, 242, 245, 1) !important;
 }
@@ -28,7 +32,7 @@ body.theme-light {
     background-color: #fff;
 }
 
-.theme-light .language-selector {
+.theme-light .language-selector, .theme-light .language-submit {
     background-color: rgba(169, 177, 182, 1);
 }
 
@@ -44,13 +48,20 @@ body.theme-light {
     background: #fff;
 }
 
+.theme-light .transactions-table-link-row:nth-child(odd) {
+    background: #fff;
+}
+
 .theme-light .search-bar {
     background-color: #fff;
 }
 
-.theme-light .load-more {
+.theme-light .load-more, .theme-light .load-more:link {
     color: #22242c;
     background-color: #fff;
+}
+.theme-light .title-bar-recent h1 .active {
+      color: #000000;
 }
 
 /* keep this for now - dark menu button */
@@ -66,13 +77,17 @@ body.theme-light {
 }
 
 .theme-light .nav-bar_moon_icon {
-    background-image: url("img/icons/moon_light.svg");
+    background-image: url("img/icons/moon_light.png");
 }
 
 .theme-light .footer_container_content_row_onion_icon {
-    background-image: url("img/onion_light.svg");
+    background-image: url("img/onion_light.png");
 }
 
 .theme-light .jumbotron {
     color: #fff;
+}
+
+.theme-light table th, .theme-light table td {
+  border-color: #dee2e6 !important;
 }

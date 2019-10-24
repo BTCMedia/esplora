@@ -24,16 +24,16 @@ cp -rL www/* $CUSTOM_ASSETS $DEST/
 # Index HTML
 pug client/index.pug -o $DEST
 
-# Open search (requires absolute BASE_URL)
-if [ -n "$BASE_URL" ]; then
+# Open search (requires absolute CANONICAL_URL)
+if [ -n "$CANONICAL_URL" ]; then
   pug client/opensearch.pug -E xml -o $DEST
 fi
 
 # RTLify CSS
-cat www/style.css | node -p "require('cssjanus').transform(fs.readFileSync('/dev/stdin').toString(), false, true)" > $DEST/style-rtl.css
+cat $DEST/style.css | node -p "require('cssjanus').transform(fs.readFileSync('/dev/stdin').toString(), false, true)" > $DEST/style-rtl.css
 
 # Browserify bundle
-(cd client && browserify -p bundle-collapser/plugin app.js \
+(cd client && browserify -p bundle-collapser/plugin src/run-browser.js \
   | ( [[ "$NODE_ENV" != "development" ]] && uglifyjs -cm || cat ) ) \
   > $DEST/app.js
 

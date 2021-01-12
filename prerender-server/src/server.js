@@ -1,3 +1,4 @@
+import fs from 'fs'
 import pug from 'pug'
 import path from 'path'
 import express from 'express'
@@ -23,7 +24,7 @@ if (app.settings.env == 'development')
   app.use(require('morgan')('dev'))
 
 app.use(require('cookie-parser')())
-app.use(require('body-parser').urlencoded())
+app.use(require('body-parser').urlencoded({ extended: false }))
 
 app.use((req, res, next) => {
   // TODO: optimize /block-height/nnn (no need to render the whole app just to get the redirect)
@@ -54,6 +55,17 @@ app.use((req, res, next) => {
 
 })
 
-app.listen(process.env.PORT || 5001, function(){
-  console.log(`HTTP server running on ${this.address().address}:${this.address().port}`)
+// Cleanup socket file from previous executions
+if (process.env.SOCKET_PATH) {
+  try {
+    if (fs.statSync(process.env.SOCKET_PATH).isSocket()) {
+      fs.unlinkSync(process.env.SOCKET_PATH)
+    }
+  } catch (_) {}
+}
+
+app.listen(process.env.SOCKET_PATH || process.env.PORT || 5001, function(){
+  let addr = this.address()
+  if (addr.address) addr = `${addr.address}:${addr.port}`
+  console.log(`HTTP server running on ${addr}`)
 })

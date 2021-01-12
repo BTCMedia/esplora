@@ -1,11 +1,25 @@
 import Snabbdom from 'snabbdom-pragma'
 import moveDec from 'move-decimal-point'
 import { sat2btc } from 'fmtbtc'
-import { nativeAssetLabel, isNativeOut } from '../util'
+import { nativeAssetLabel } from '../const'
+import { isNativeOut } from '../util'
 
 const DEFAULT_PRECISION = 0
 
-export const formatTime = (unix, t) => new Date(unix*1000).toLocaleString(t.lang_id, { timeZoneName: 'short' })
+const pad = n => n < 10 ? '0'+n : n
+
+const formatTimezone = time => {
+  const tzOffset = time.getTimezoneOffset() * -1;
+  return tzOffset == 0 ? 'UTC' : 'GMT ' + (tzOffset < 0 ? '' : '+') + (tzOffset/60)
+}
+
+export const formatTime = (unix, with_tz = true) => {
+  const time = new Date(unix*1000)
+
+  return `${time.getFullYear()}-${pad(time.getMonth() + 1)}-${pad(time.getDate())}`
+       + ` ${pad(time.getHours())}:${pad(time.getMinutes())}:${pad(time.getSeconds())}`
+       + (with_tz ? ' ' + formatTimezone(time) : '')
+}
 
 export const formatSat = (sats, label=nativeAssetLabel) => `${formatNumber(sat2btc(sats))} ${label}`
 

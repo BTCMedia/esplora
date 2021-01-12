@@ -3,12 +3,13 @@ set -eo pipefail
 
 FLAVOR=$1
 MODE=$2
-DEBUG=$3
+: ${DEBUG:=$3} # can be set either via DEBUG or using the argument
+
 SYNC_SECRET=$4
 SYNC_SOURCE=$5
 
 if [ -z "$FLAVOR" ] || [ ! -d /srv/explorer/static/$FLAVOR ]; then
-    echo "Please provide bitcoin-testnet, bitcoin-mainnet or liquid-mainnet as a parameter"
+    echo "Please provide bitcoin-testnet, bitcoin-mainnet, bitcoin-regtest, liquid-mainnet or liquid-regtest as a parameter"
     echo "For example run.sh bitcoin-mainnet explorer"
     exit 1
 fi
@@ -27,6 +28,10 @@ if [ "$DAEMON-$NETWORK" == "bitcoin-testnet" ]; then
   DAEMON_DIR="$DAEMON_DIR/testnet"
 elif [ "$DAEMON-$NETWORK" == "liquid-mainnet" ]; then
   DAEMON_DIR="$DAEMON_DIR/liquidv1"
+elif [ "$DAEMON-$NETWORK" == "bitcoin-regtest" ]; then
+  DAEMON_DIR="$DAEMON_DIR/regtest"
+elif [ "$DAEMON-$NETWORK" == "liquid-regtest" ]; then
+  DAEMON_DIR="$DAEMON_DIR/liquidregtest"
 fi
 
 
@@ -37,7 +42,7 @@ cp /srv/explorer/source/contrib/runits/tor-log.runit /etc/service/tor/log/run
 cp /srv/explorer/source/contrib/runits/tor-log-config.runit /data/logs/tor/config
 
 mkdir -p /etc/service/socat
-cp /srv/explorer/source/contrib/runits/socat.runit /etc/service/socat/run 
+cp /srv/explorer/source/contrib/runits/socat.runit /etc/service/socat/run
 
 NGINX_NOSLASH_PATH="unused"
 NGINX_REWRITE_NOJS='return 301 " /nojs$uri"'
@@ -49,27 +54,64 @@ if [ "${DAEMON}" != "liquid" ]; then
         NGINX_NOSLASH_PATH="testnet"
         NGINX_REWRITE='rewrite ^/testnet(/.*)$ $1 break;'
         NGINX_REWRITE_NOJS='rewrite ^/testnet(/.*)$ " /testnet/nojs$1?" permanent'
+    elif [ "${NETWORK}" == "regtest" ]; then
+        NGINX_PATH="regtest/"
+        NGINX_NOSLASH_PATH="regtest"
+        NGINX_REWRITE='rewrite ^/regtest(/.*)$ $1 break;'
+        NGINX_REWRITE_NOJS='rewrite ^/regtest(/.*)$ " /regtest/nojs$1?" permanent'
     fi
 else
-    ELECTRS_NETWORK="liquid"
-    PARENT_NETWORK="--parent-network mainnet"
-    NGINX_PATH="liquid/"
-    NGINX_REWRITE='rewrite ^/liquid(/.*)$ $1 break;'
-    NGINX_REWRITE_NOJS='rewrite ^/liquid(/.*)$ " /liquid/nojs$1?" permanent'
-    NGINX_NOSLASH_PATH="liquid"
-    NGINX_CSP="$NGINX_CSP; connect-src 'self' https://assets.blockstream.info/"
+    if [ "${NETWORK}" == "regtest" ]; then
+        ELECTRS_NETWORK="liquidregtest"
+        PARENT_NETWORK="--parent-network regtest"
+        NGINX_PATH="liquidregtest/"
+        NGINX_REWRITE='rewrite ^/liquidregtest(/.*)$ $1 break;'
+        NGINX_REWRITE_NOJS='rewrite ^/liquidregtest(/.*)$ " /liquidregtest/nojs$1?" permanent'
+        NGINX_NOSLASH_PATH="liquidregtest"
+    else
+        ELECTRS_NETWORK="liquid"
+        PARENT_NETWORK="--parent-network mainnet"
+        NGINX_PATH="liquid/"
+        NGINX_REWRITE='rewrite ^/liquid(/.*)$ $1 break;'
+        NGINX_REWRITE_NOJS='rewrite ^/liquid(/.*)$ " /liquid/nojs$1?" permanent'
+        NGINX_NOSLASH_PATH="liquid"
 
-    ELECTRS_ARGS="$ELECTRS_ARGS --asset-db-path /srv/liquid-assets-db"
-    ASSETS_GIT=https://github.com/Blockstream/asset_registry_db
-    ASSETS_GPG=A1DF83770F29548228170D63DBABBA3AD525ACA1
+        ELECTRS_ARGS="$ELECTRS_ARGS --asset-db-path /srv/liquid-assets-db"
+        ASSETS_GIT=${ASSETS_GIT:-https://github.com/Blockstream/asset_registry_db}
+        ASSETS_GPG=${ASSETS_GPG:-/srv/explorer/source/contrib/asset_registry_pubkey.asc}
+    fi
 fi
 
 NGINX_LOGGING="access_log off"
+
+ELECTRS_ARGS="$ELECTRS_ARGS --http-socket-file /var/electrs-rest.sock"
 
 if [ "${DEBUG}" == "verbose" ]; then
     ELECTRS_ARGS="$ELECTRS_ARGS -vvvv"
     ELECTRS_BACKTRACE="export RUST_BACKTRACE=full"
     NGINX_LOGGING="access_log /data/logs/nginx-access-debug-${FLAVOR}.log"
+else
+  ELECTRS_ARGS="$ELECTRS_ARGS -vv"
+fi
+
+if [[ "$DAEMON-$NETWORK" = "bitcoin-mainnet" && -z "$NO_PRECACHE" ]]; then
+    ELECTRS_ARGS="$ELECTRS_ARGS --precache-scripts /srv/explorer/popular-scripts.txt"
+fi
+
+if [ -z "$NO_ADDRESS_SEARCH" ]; then
+    ELECTRS_ARGS="$ELECTRS_ARGS --address-search"
+fi
+
+if [ -n "$ENABLE_LIGHTMODE" ]; then
+    ELECTRS_ARGS="$ELECTRS_ARGS --lightmode"
+fi
+
+if [ "$TEMPLATE" == "blockstream" ]; then
+  d=/srv/explorer/source/flavors/blockstream
+  ONION_URL=$(source $d/config.env && echo $ONION_V3)
+  # the backtick subshell below is injected into electrs.runit as a literal string,
+  # which is evaluated later when the runit service is run.
+  ELECTRS_ARGS=$ELECTRS_ARGS' --electrum-public-hosts "`cat '$d'/electrum-hosts-'$DAEMON'-'$NETWORK'.json || echo {}`" --electrum-banner "`cat '$d'/electrum-banner.txt`"'
 fi
 
 function preprocess(){
@@ -82,7 +124,7 @@ function preprocess(){
        -e "s|{STATIC_DIR}|$STATIC_DIR|g" \
        -e "s|{PARENT_NETWORK}|$PARENT_NETWORK|g" \
        -e "s|{ELECTRS_NETWORK}|$ELECTRS_NETWORK|g" \
-       -e "s|{ELECTRS_ARGS}|$ELECTRS_ARGS|g" \
+       -e "s#{ELECTRS_ARGS}#$ELECTRS_ARGS#g" \
        -e "s|{ELECTRS_BACKTRACE}|$ELECTRS_BACKTRACE|g" \
        -e "s|{NGINX_LOGGING}|$NGINX_LOGGING|g" \
        -e "s|{NGINX_PATH}|$NGINX_PATH|g" \
@@ -116,8 +158,8 @@ fi
 
 preprocess /srv/explorer/source/contrib/${DAEMON}-${NETWORK}-${MODE}.conf.in /data/.${DAEMON}.conf
 
-if [ "${DAEMON}" == "liquid" ]; then
-    mkdir -p /etc/service/bitcoin/log /etc/service/liquid-assets-poller /data/logs/bitcoin
+if [ "$DAEMON-$NETWORK" == "liquid-mainnet" ]; then
+    mkdir -p /etc/service/bitcoin/log /etc/service/liquid-assets-poller/log /data/logs/bitcoin /data/logs/poller
 
     preprocess /srv/explorer/source/contrib/bitcoin-mainnet-pruned-for-liquid.conf.in /data/.bitcoin.conf
     cp /srv/explorer/source/contrib/runits/bitcoin_for_liquid.runit /etc/service/bitcoin/run
@@ -125,6 +167,8 @@ if [ "${DAEMON}" == "liquid" ]; then
     cp /srv/explorer/source/contrib/runits/bitcoin_for_liquid-log-config.runit /data/logs/bitcoin/config
 
     preprocess /srv/explorer/source/contrib/runits/liquid-assets-poller.runit /etc/service/liquid-assets-poller/run
+    cp /srv/explorer/source/contrib/runits/liquid-assets-poller-log.runit /etc/service/liquid-assets-poller/log/run
+    cp /srv/explorer/source/contrib/runits/liquid-assets-poller-log-config.runit /data/logs/poller/config
     chmod +x /etc/service/liquid-assets-poller/run
 fi
 
@@ -149,6 +193,7 @@ else
 fi
 
 preprocess /srv/explorer/source/contrib/nginx.conf.in /etc/nginx/sites-enabled/default
+sed -i 's/user www-data;/user root;/' /etc/nginx/nginx.conf
 
 # Make mempool contents available over nginx, protected with SYNC_SECRET
 if [ -n "$SYNC_SECRET" ]; then
@@ -158,10 +203,6 @@ if [ -n "$SYNC_SECRET" ]; then
     # insert nginx-sync.conf inside the server {} block
     sed -i '/^server {/r /tmp/nginx-sync.conf' /etc/nginx/sites-enabled/default
     rm /tmp/nginx-sync.conf
-
-    # nginx needs to be able to read the cookie file (to query the rpc), as well as the mempool.dat file
-    # XXX: is running as root acceptable?
-    sed -i 's/^user www-data/user root/' /etc/nginx/nginx.conf
 fi
 
 preprocess /srv/explorer/source/cli.sh.in /usr/bin/cli
@@ -177,6 +218,13 @@ if [ "${DAEMON}" == "liquid" ]; then
     rm /tmp/nginx-liquid-assets.conf
 fi
 
+if [ -n "$ONION_URL" ]; then
+    # insert the Onion-Location `map` BEFORE the server { } block
+    sed -i '/^server {/ i map $sent_http_content_type $onion_header { "~^text/html($|;)" '$ONION_URL'$request_uri; }' /etc/nginx/sites-enabled/default
+    # insert the Onion-Location `add_header` directive INSIDE the server {} block
+    sed -i '/^server {/ a add_header Onion-Location $onion_header always;' /etc/nginx/sites-enabled/default
+fi
+
 chmod +x /usr/bin/cli
 
 # initialize directories
@@ -189,12 +237,25 @@ cp /srv/explorer/source/contrib/runits/nodedaemon-log.runit /etc/service/${DAEMO
 cp /srv/explorer/source/contrib/runits/nodedaemon-log-config.runit /data/logs/nodedaemon/config
 chmod +x /etc/service/${DAEMON}/run
 
+if [ "${NETWORK}" == "regtest" ]; then
+    if [ "${DAEMON}" != "liquid" ]; then
+        /srv/explorer/bitcoin/bin/bitcoind -conf=/data/.bitcoin.conf -datadir=/data/bitcoin -daemon -regtest
+    else
+        /srv/explorer/$DAEMON/bin/${DAEMON}d -conf=/data/.$DAEMON.conf -datadir=/data/$DAEMON -daemon
+    fi
+    address=$(cli -rpcwait getnewaddress)
+    cli generatetoaddress 100 ${address}
+    cli stop
+fi
+
 # Sync mempool contents from SYNC_SOURCE
 if [ -n "$SYNC_SOURCE" ]; then
   # wait for bitcoind to fully sync up,
   if [ "${DAEMON}" == "liquid" ]; then
-    /srv/explorer/bitcoin/bin/bitcoind -conf=/data/.bitcoin.conf -datadir=/data/bitcoin -daemon
-    /srv/explorer/source/contrib/bitcoind-wait-sync.sh cli_bitcoin
+    if [ "${NETWORK}" != "regtest" ]; then
+      /srv/explorer/bitcoin/bin/bitcoind -conf=/data/.bitcoin.conf -datadir=/data/bitcoin -daemon
+      /srv/explorer/source/contrib/bitcoind-wait-sync.sh cli_bitcoin
+    fi
   fi
   /srv/explorer/$DAEMON/bin/${DAEMON}d -conf=/data/.$DAEMON.conf -datadir=/data/$DAEMON -daemon
   /srv/explorer/source/contrib/bitcoind-wait-sync.sh cli
